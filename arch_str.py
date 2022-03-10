@@ -314,7 +314,7 @@ class binnings(nn.Module):  # 64 => 16
         super(binnings, self).__init__()
         c = 4 ** cfg.px_num
         n = 4
-        tmp = np.ones((c // n, n, 1, 1), dtype=np.float32) * (1 / n) 10.172.35.31
+        tmp = np.ones((c // n, n, 1, 1), dtype=np.float32) * (1 / n)
         tmp = torch.from_numpy(tmp).float().to(device)
         self.groupn = torch.nn.Parameter(tmp, requires_grad=True)
         # DRV
