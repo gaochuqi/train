@@ -152,9 +152,9 @@ class DenoiseM(nn.Module):
 class Refine(nn.Module):
     def __init__(self):
         super(Refine, self).__init__()
-        self.net1 = nn.Conv2d(32, 16, kernel_size=3, stride=1, padding=1)
-        self.net2 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
-        self.net3 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(132, 64, kernel_size=3, stride=1, padding=1)
+        self.net2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
+        self.net3 = nn.Conv2d(64, 4, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
         self.relu2 = torch.nn.ReLU()
         self.sigmoid = torch.nn.Sigmoid()
