@@ -46,131 +46,68 @@ g1_row = g1.reshape((1, 1, 1, -1))
 class ColorTransfer(nn.Module):
     def __init__(self):
         super(ColorTransfer, self).__init__()
-        self.w = torch.nn.Parameter(cfa, requires_grad=True)
+        self.net = nn.Conv2d(4, 4, kernel_size=1, stride=1, padding=0, bias=False)
+        self.net.weight = torch.nn.Parameter(cfa)
 
-    # | gggg | bbbb | rrrr | gggg | => | yyyy | uuuu | vvvv | wwww |
     def forward(self, x):
-        n = 4 ** (cfg.px_num - 1)
-        cfan = torch.zeros((n, n, 1, 1), device=self.w.device)
-        c = 4  # n // 4
-        for i in range(4):
-            for j in range(c):
-                cfan[i * 4 + j, j, :, :] = self.w[i, 0]
-                cfan[i * 4 + j, j + c, :, :] = self.w[i, 1]
-                cfan[i * 4 + j, j + c * 2, :, :] = self.w[i, 2]
-                cfan[i * 4 + j, j + c * 3, :, :] = self.w[i, 3]
-        out = F.conv2d(x, cfan, stride=1, padding=0, bias=None)
+        out = self.net(x)
         return out
 
 
 class ColorTransferInv(nn.Module):
     def __init__(self):
         super(ColorTransferInv, self).__init__()
-        self.w = torch.nn.Parameter(cfa_inv, requires_grad=True)
+        self.net = nn.Conv2d(4, 4, kernel_size=1, stride=1, padding=0, bias=False)
+        self.net.weight = torch.nn.Parameter(cfa_inv)
 
-    # | yyyy | uuuu | vvvv | wwww | => | gggg | bbbb | rrrr | gggg |
     def forward(self, x):
-        n = 4 ** (cfg.px_num - 1)
-        cfan_inv = torch.zeros((n, n, 1, 1), device=self.w.device)
-        c = 4  # n // 4
-        for i in range(4):
-            for j in range(c):
-                cfan_inv[i * 4 + j, j, :, :] = self.w[i, 0]
-                cfan_inv[i * 4 + j, j + c, :, :] = self.w[i, 1]
-                cfan_inv[i * 4 + j, j + c * 2, :, :] = self.w[i, 2]
-                cfan_inv[i * 4 + j, j + c * 3, :, :] = self.w[i, 3]
-        out = F.conv2d(x, cfan_inv, stride=1, padding=0, bias=None)
+        out = self.net(x)
         return out
-
 
 class FreTransfer(nn.Module):
     def __init__(self):
         super(FreTransfer, self).__init__()
         self.w1 = torch.nn.Parameter(h0_row, requires_grad=True)
         self.w2 = torch.nn.Parameter(h1_row, requires_grad=True)
+        self.net = nn.Conv2d(4, 16, kernel_size=2, stride=2, padding=0, bias=False)
 
-    # | yyyy | uuuu | vvvv | wwww |
-    # => lly1 lly2 lly3 lly4 llu1 llu2 llu3 llu4 llv1 llv2 llv3 llv4 llw1 llw2 llw3 llw4
     def forward(self, x):
-        h0_row = self.w1
-        h1_row = self.w2
-        h0_row_t = self.w1.transpose(2, 3)
-        h1_row_t = self.w2.transpose(2, 3)
-        h00_row = h0_row * h0_row_t  # 1,1,2,2
-        h01_row = h0_row * h1_row_t
-        h10_row = h1_row * h0_row_t
-        h11_row = h1_row * h1_row_t
-        filters1 = [h00_row, h01_row, h10_row, h11_row]
-        n = 4 ** (cfg.px_num - 1)
-        filters_ft = torch.zeros((n * 4, n, 2, 2), device=h00_row.device)
-        for i in range(4):
-            for j in range(n):
-                filters_ft[n * i + j, j, :, :] = filters1[i][0, 0, :, :]
-        out = F.conv2d(x, filters_ft, stride=(2, 2), padding=0, bias=None)
+        out = self.net(x)
         return out
-
 
 class FreTransferInv(nn.Module):
     def __init__(self):
         super(FreTransferInv, self).__init__()
         self.w1 = torch.nn.Parameter(g0_col, requires_grad=True)
         self.w2 = torch.nn.Parameter(g1_col, requires_grad=True)
-
-    # lly1 lly2 lly3 lly4 llu1 llu2 llu3 llu4 llv1 llv2 llv3 llv4 llw1 llw2 llw3 llw4
-    # => | yyyy | uuuu | vvvv | wwww |
+        self.net = nn.ConvTranspose2d(16,4, kernel_size=2, stride=2, padding=0, bias=False)
     def forward(self, x):
-        g0_col = self.w1
-        g1_col = self.w2
-        g0_col_t = g0_col.transpose(2, 3)
-        g1_col_t = g1_col.transpose(2, 3)
-        g00_col = g0_col * g0_col_t
-        g01_col = g0_col * g1_col_t
-        g10_col = g1_col * g0_col_t
-        g11_col = g1_col * g1_col_t
-        filters2 = [g00_col, g10_col, g01_col, g11_col]
-        n = 4 ** (cfg.px_num - 1)
-        filters_fti = torch.zeros((n * 4, n, 2, 2), device=g00_col.device)
-        for i in range(4):
-            for j in range(n):
-                filters_fti[n * i + j, j, :, :] = filters2[i][0, 0, :, :]
-        out = F.conv_transpose2d(x, filters_fti, stride=(2, 2), padding=0, bias=None)
+        out = self.net(x)
         return out
 
 class Fusion(nn.Module):
     def __init__(self):
         super(Fusion, self).__init__()
-        n = 4
-        cin = 5
-        cin *= n
-        c = 16 * n
-        cout = n
-        self.net1 = nn.Conv2d(cin, c, kernel_size=3, stride=1, padding=1)
-        self.net2 = nn.Conv2d(c, c, kernel_size=3, stride=1, padding=1)
-        self.net3 = nn.Conv2d(c, cout, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(4, 16, kernel_size=3, stride=1, padding=1)
+        self.net2 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.net3 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
         self.relu2 = torch.nn.ReLU()
         self.sigmoid = torch.nn.Sigmoid()
 
+
     def forward(self, x):
         net1 = self.relu1(self.net1(x))
         net2 = self.relu2(self.net2(net1))
-        net3 = self.net3(net2)
-        out = self.sigmoid(net3)
+        out = self.sigmoid(self.net3(net2))
         return out
-
 
 class FusionM(nn.Module):
     def __init__(self):
         super(FusionM, self).__init__()
-        n = 4
-        cin = 6
-        cin *= n
-        c = 16 * n
-        cout = n
-
-        self.net1 = nn.Conv2d(cin, c, kernel_size=3, stride=1, padding=1)
-        self.net2 = nn.Conv2d(c, c, kernel_size=3, stride=1, padding=1)
-        self.net3 = nn.Conv2d(c, cout, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(20, 16, kernel_size=3, stride=1, padding=1)
+        self.net2 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.net3 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
         self.relu2 = torch.nn.ReLU()
         self.sigmoid = torch.nn.Sigmoid()
@@ -178,22 +115,15 @@ class FusionM(nn.Module):
     def forward(self, x):
         net1 = self.relu1(self.net1(x))
         net2 = self.relu2(self.net2(net1))
-        net3 = self.net3(net2)
-        out = self.sigmoid(net3)
+        out = self.sigmoid(self.net3(net2))
         return out
-
 
 class Denoise(nn.Module):
     def __init__(self):
         super(Denoise, self).__init__()
-        n = 4
-        cin = 21
-        cin *= n
-        c = 16 * n
-        cout = 16 * n
-        self.net1 = nn.Conv2d(cin, c, kernel_size=3, stride=1, padding=1)
-        self.net2 = nn.Conv2d(c, c, kernel_size=3, stride=1, padding=1)
-        self.net3 = nn.Conv2d(c, cout, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(20, 16, kernel_size=3, stride=1, padding=1)
+        self.net2 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.net3 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
         self.relu2 = torch.nn.ReLU()
 
@@ -202,19 +132,14 @@ class Denoise(nn.Module):
         net2 = self.relu2(self.net2(net1))
         out = self.net3(net2)
         return out
-
 
 class DenoiseM(nn.Module):
+
     def __init__(self):
         super(DenoiseM, self).__init__()
-        n = 4
-        cin = 25
-        cin *= n
-        c = 16 * n
-        cout = 16 * n
-        self.net1 = nn.Conv2d(cin, c, kernel_size=3, stride=1, padding=1)
-        self.net2 = nn.Conv2d(c, c, kernel_size=3, stride=1, padding=1)
-        self.net3 = nn.Conv2d(c, cout, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(24, 16, kernel_size=3, stride=1, padding=1)
+        self.net2 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.net3 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
         self.relu2 = torch.nn.ReLU()
 
@@ -223,19 +148,13 @@ class DenoiseM(nn.Module):
         net2 = self.relu2(self.net2(net1))
         out = self.net3(net2)
         return out
-
 
 class Refine(nn.Module):
     def __init__(self):
         super(Refine, self).__init__()
-        n = 4
-        cin = 33
-        cin *= n
-        c = 16 * n
-        cout = n
-        self.net1 = nn.Conv2d(cin, c, kernel_size=3, stride=1, padding=1)
-        self.net2 = nn.Conv2d(c, c, kernel_size=3, stride=1, padding=1)
-        self.net3 = nn.Conv2d(c, cout, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(32, 16, kernel_size=3, stride=1, padding=1)
+        self.net2 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.net3 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
         self.relu2 = torch.nn.ReLU()
         self.sigmoid = torch.nn.Sigmoid()
