@@ -1,8 +1,7 @@
 
-import arch_str
 import torch.onnx
 import config as cfg
-form structure import MainDenoise
+from structure import MainDenoise
 
 #Function to Convert to ONNX
 def Convert_ONNX():
