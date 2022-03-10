@@ -38,7 +38,9 @@ if __name__ == "__main__":
 
     # Test which classes performed well
     # testAccuracy()
-    model = MainDenoise()
+    model = arch_qat.EMVD(cfg)
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
     PATH= cfg.model_save_root
     # Let's load the model we just created and test the accuracy per label
     model = model_dict=model.load_state_dict(torch.load(PATH))
