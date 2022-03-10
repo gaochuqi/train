@@ -31,7 +31,7 @@ def Convert_ONNX():
                        torch.cat([zeros, zeros, zeros, tmp], dim=1)], dim=0)
         filters_g1.append(g)
     filters_ft = torch.cat(filters_g1, dim=0)  # .to('cuda')
-    model.ft.net.weight = nn.Parameter(filters_ft)
+    model.ft.w1.weight = nn.Parameter(filters_ft)
     # fti
     g0_col = model.fti.w1
     g1_col = model.fti.w2
@@ -54,12 +54,12 @@ def Convert_ONNX():
     filters_fti = torch.cat(filters_g2, dim=0)  # .to('cuda')
     model.fti.net.weight = nn.Parameter(filters_fti)
     #########################################################################
-    model.ct0.net1.weight = model.ct.net1.weight
-    model.ct1.net1.weight = model.ct.net1.weight
+    model.ct0.net.weight = model.ct.net.weight
+    model.ct1.net.weight = model.ct.net.weight
 
-    model.cti_fu.net1.weight = model.cti.net1.weight
-    model.cti_de.net1.weight = model.cti.net1.weight
-    model.cti_re.net1.weight = model.cti.net1.weight
+    model.cti_fu.net.weight = model.cti.net.weight
+    model.cti_de.net.weight = model.cti.net.weight
+    model.cti_re.net.weight = model.cti.net.weight
 
     model.ft_00.net.weight = model.ft.net.weight
     model.ft_10.net.weight = model.ft.net.weight
