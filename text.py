@@ -3,6 +3,7 @@ import torch.onnx
 import config as cfg
 import torch.nn as nn
 from structure import MainDenoise
+from torch.autograd import Variable
 
 #Function to Convert to ONNX
 def Convert_ONNX():
