@@ -257,15 +257,21 @@ class binnings(nn.Module):  # 64 => 16
 class EMVD(nn.Module):
     def __init__(self, cfg):
         super(EMVD, self).__init__()
-        self.binnings = binnings()
         self.cfg = cfg
+
+        self.binnings = binnings()
+        self.binnings_0 = binnings()
+        self.binnings_1 = binnings()
+
         self.ct = ColorTransfer()
         self.ct0 = ColorTransfer()
         self.ct1 = ColorTransfer()
+        
         self.cti = ColorTransferInv()
         self.cti_fu = ColorTransferInv()
         self.cti_de = ColorTransferInv()
         self.cti_re = ColorTransferInv()
+        
         self.ft = FreTransfer()
         self.ft_00 = FreTransfer()
         self.ft_10 = FreTransfer()
@@ -273,23 +279,32 @@ class EMVD(nn.Module):
         self.ft_11 = FreTransfer()
         self.ft_02 = FreTransfer()
         self.ft_12 = FreTransfer()
+        
         self.fti = FreTransferInv()
         self.fti_d2 = FreTransferInv()
         self.fti_d1 = FreTransferInv()
         self.fti_fu = FreTransferInv()
         self.fti_de = FreTransferInv()
         self.fti_re = FreTransferInv()
+        
         self.vd = VD()
         self.md1 = MVD()
         self.md0 = MVD()
         self.refine = Refine()
+        
+        self.conv = nn.Conv2d(c // 16, c, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv.weight = torch.nn.Parameter(tilex16)
+        self.conv.weight.requires_grad = False
+
 
     def forward(self, ft0, ft1, coeff_a=1, coeff_b=1):
         c = 4 ** (cfg.px_num - 1)
 
         if ft0.shape == ft1.shape:
-            ft0 = self.binnings(ft0)
-        ft1 = self.binnings(ft1)
+            ft0 = self.binnings_0(ft0)
+
+        ft1 = self.binnings_1(ft1)
+
         # print("x.shape", x.shape)
 
 
@@ -297,42 +312,52 @@ class EMVD(nn.Module):
         tmp1 = self.ct1(ft1)
         ft0_d0 = self.ft_00(tmp0)
         ft1_d0 = self.ft_10(tmp1)
-        ft0_d1 = self.ft_01(ft0_d0[:,0:4,:,:])
-        ft1_d1 = self.ft_11(ft1_d0[:, 0:4, :, :])
-        ft0_d2 = self.ft_02(ft0_d1[:,0:4,:,:])
-        ft1_d2 = self.ft_12(ft1_d1[:, 0:4, :, :])
+        
+        ft0_d1 = self.ft_01(ft0_d0[:,0:c,:,:])
+        ft1_d1 = self.ft_11(ft1_d0[:, 0:c, :, :])
+        ft0_d2 = self.ft_02(ft0_d1[:,0:c,:,:])
+        ft1_d2 = self.ft_12(ft1_d1[:, 0:c, :, :])
 
-        denoise_out, gamma = self.vd(ft0_d2, ft1_d2, coeff_a, coeff_b)
-        denoise_out_d2 = self.fti_d2(denoise_out)
+
+        fusion_out_d2, denoise_out_d2, gamma_d2 = self.vd(ft0_d2, ft1_d2, coeff_a, coeff_b)
+        denoise_up_d1 = self.fti_d2(denoise_out_d2)
         # print("gamma1",gamma.shape)
-        gamma = F.interpolate(gamma, scale_factor=2)
+        gamma_up_d1 = F.interpolate(gamma_d2, scale_factor=2)
 
-        fusion_out, denoise_out, gamma = self.md1(ft0_d1, ft1_d1,
-                                                  gamma, denoise_out_d2,
-                                                  coeff_a, coeff_b)
-        denoise_up_d1 = self.fti_d1(denoise_out)
-        gamma = F.interpolate(gamma, scale_factor=2)
+        fusion_out_d1, denoise_out_d1, gamma_d1, sigma_d1 = self.md1(ft0_d1, ft1_d1, gamma_up_d1, denoise_up_d1, coeff_a, coeff_b)
 
-        fusion_out, denoise_out, gamma = self.md0(ft0_d0, ft1_d0,
-                                                  gamma, denoise_up_d1,
-                                                  coeff_a, coeff_b)
+        denoise_up_d0 = self.fti_d1(denoise_out_d1)
+        gamma_up_d0 = F.interpolate(gamma_d1, scale_factor=2)
 
-        # refine
-        refine_in = torch.cat([fusion_out, denoise_out], dim=1)
+        fusion_out, denoise_out, gamma, sigma = self.md0(ft0_d0, ft1_d0,
+                                                                gamma_up_d0, denoise_up_d0,
+                                                                                                        coeff_a, coeff_b)
+
+         # refine
+        refine_in = torch.cat([fusion_out, denoise_out, sigma], dim=1)
         omega = self.refine(refine_in)
-        # refine_out = torch.mul(denoise_out, (1 - omega)) + torch.mul(fusion_out, omega)
-        refine_out = denoise_out * (1-omega) + fusion_out * omega
+        omegaM = self.conv(omega)
+        refine_out = denoise_out * (1-omegaM) + fusion_out * omegaM
+        if self.cfg.use_ecb:
+            ecb = self.ecb(refine_in)
+            refine_out += ecb
 
         tmp = self.fti_fu(fusion_out)
-        fusion_out = self.cti_fu(tmp)
+        fusion = self.cti_fu(tmp)
 
         tmp = self.fti_de(denoise_out)
-        denoise_out = self.cti_de(tmp)
+        denoise = self.cti_de(tmp)
 
         tmp = self.fti_re(refine_out)
-        refine_out = self.cti_re(tmp)
+        refine = self.cti_re(tmp)
 
-        return fusion_out, denoise_out, refine_out, omega, gamma
+        # return output
+        if self.cfg.use_realism:
+            realism = self.realism(torch.cat([fusion_out_d2, denoise_out_d2], dim=1)) + refine # refine_out
+            return fusion, denoise, refine, omega, gamma, realism
+        else:
+            return fusion, denoise, refine, omega, gamma
+
 
 ################################################################################
 
