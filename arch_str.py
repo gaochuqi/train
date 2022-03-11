@@ -215,18 +215,21 @@ class MVD(nn.Module):
         c = 4 ** (cfg.px_num - 1)
         ll0 = ft0[:, 0:c, :, :]
         ll1 = ft1[:, 0:c, :, :]
-
-        fusion_in = torch.cat([abs(ll1 - ll0), gamma_up], dim=1)
+        # fusion
+        sigma_ll0 = torch.clamp(ll0[:, 0:(c // 4), :, :], 0, 1) * coeff_a + coeff_b
+        sigma_ll1 = torch.clamp(ll1[:, 0:(c // 4), :, :], 0, 1) * coeff_a + coeff_b
+        fusion_in = torch.cat([abs(ll1 - ll0), gamma_up, sigma_ll1], dim=1)
         gamma = self.fusion(fusion_in)
 
         gammaM = self.conv(gamma)
         fusion_out = ft0 * (1 - gammaM) + ft1 * gammaM
 
         # denoise
-        denoise_in = torch.cat([fusion_out, ll1, denoise_down], dim=1)
+        sigma = (1 - gamma) * (1 - gamma) * sigma_ll0 + gamma * gamma * sigma_ll1
+        denoise_in = torch.cat([fusion_out, ll1, denoise_down, sigma], dim=1)
         denoise_out = self.denoise(denoise_in)
 
-        return fusion_out, denoise_out, gamma
+        return fusion_out, denoise_out, gamma, sigma
 
 class binnings(nn.Module):  # 64 => 16
     def __init__(self):
