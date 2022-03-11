@@ -88,7 +88,7 @@ class FreTransferInv(nn.Module):
 class Fusion(nn.Module):
     def __init__(self):
         super(Fusion, self).__init__()
-        self.net1 = nn.Conv2d(24, 64, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(20, 64, kernel_size=3, stride=1, padding=1)
         self.net2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
         self.net3 = nn.Conv2d(64, 4, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
@@ -121,7 +121,7 @@ class FusionM(nn.Module):
 class Denoise(nn.Module):
     def __init__(self):
         super(Denoise, self).__init__()
-        self.net1 = nn.Conv2d(100, 64, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(84, 64, kernel_size=3, stride=1, padding=1)
         self.net2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
         self.net3 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
