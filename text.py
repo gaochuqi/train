@@ -106,7 +106,7 @@ if __name__ == "__main__":
     model = MainDenoise()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
-    checkpoint = torch.load(cfg.best_model_save_root)
+    checkpoint = torch.load(cfg.model_save_root)
     state_dict = checkpoint['model']
     model.load_state_dict(state_dict, strict=False)
 
