@@ -88,9 +88,9 @@ class FreTransferInv(nn.Module):
 class Fusion(nn.Module):
     def __init__(self):
         super(Fusion, self).__init__()
-        self.net1 = nn.Conv2d(4, 16, kernel_size=3, stride=1, padding=1)
-        self.net2 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
-        self.net3 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(24, 64, kernel_size=3, stride=1, padding=1)
+        self.net2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
+        self.net3 = nn.Conv2d(64, 4, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
         self.relu2 = torch.nn.ReLU()
         self.sigmoid = torch.nn.Sigmoid()
@@ -105,9 +105,9 @@ class Fusion(nn.Module):
 class FusionM(nn.Module):
     def __init__(self):
         super(FusionM, self).__init__()
-        self.net1 = nn.Conv2d(20, 16, kernel_size=3, stride=1, padding=1)
-        self.net2 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
-        self.net3 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(24, 64, kernel_size=3, stride=1, padding=1)
+        self.net2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
+        self.net3 = nn.Conv2d(64, 4, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
         self.relu2 = torch.nn.ReLU()
         self.sigmoid = torch.nn.Sigmoid()
@@ -121,9 +121,9 @@ class FusionM(nn.Module):
 class Denoise(nn.Module):
     def __init__(self):
         super(Denoise, self).__init__()
-        self.net1 = nn.Conv2d(20, 16, kernel_size=3, stride=1, padding=1)
-        self.net2 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
-        self.net3 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(100, 64, kernel_size=3, stride=1, padding=1)
+        self.net2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
+        self.net3 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
         self.relu2 = torch.nn.ReLU()
 
@@ -137,9 +137,9 @@ class DenoiseM(nn.Module):
 
     def __init__(self):
         super(DenoiseM, self).__init__()
-        self.net1 = nn.Conv2d(24, 16, kernel_size=3, stride=1, padding=1)
-        self.net2 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
-        self.net3 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=1)
+        self.net1 = nn.Conv2d(100, 64, kernel_size=3, stride=1, padding=1)
+        self.net2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
+        self.net3 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1)
         self.relu1 = torch.nn.ReLU()
         self.relu2 = torch.nn.ReLU()
 
