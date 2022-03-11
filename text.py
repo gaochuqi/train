@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     # Test which classes performed well
     # testAccuracy()
-    model = MainDenoise()
+    model =  arch_str.EMVD(cfg)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
     checkpoint = torch.load(cfg.model_save_root)
